@@ -8,6 +8,7 @@ import { Server } from 'socket.io';
 
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import pageRoutes from './routes/pageRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
 // Load environment variables
@@ -49,6 +50,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/pages', pageRoutes);
 
 // ---------------- Error Handling ----------------
 app.use(notFound);
