@@ -33,6 +33,12 @@ const pageSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    shareToken: {
+        type: String,
+        default: null,
+        unique: true,
+        sparse: true // allows multiple null values
+    },
     content: {
         type: String, // Placeholder for Block content (JSON string or ref)
         default: ''
