@@ -5,16 +5,52 @@ import api from '@/services/api';
 import Editor from '@/components/editor/Editor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Loader2 } from 'lucide-react';
 
 export default function PageDetail() {
     const { pageId } = useParams<{ pageId: string }>();
     const { renamePage } = usePageStore();
 
     // Local state for the specific page details (including content)
-    // We fetch this separately from the sidebar tree to get full content
     const [page, setPage] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [title, setTitle] = useState('');
+
+    const [content, setContent] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    // We only update the local content state from editor changes
+    const handleEditorChange = useCallback((newContent: string) => {
+        setContent(newContent);
+    }, []);
+
+    // Debounce the content value
+    const debouncedContent = useDebounce(content, 1000); // 1 second delay
+
+    // Effect to trigger save when debounced content changes
+    useEffect(() => {
+        const save = async () => {
+            if (!pageId || !debouncedContent) return;
+            // Prevent saving initial empty string if page hasn't loaded or simply skip if matches loaded
+            if (page && debouncedContent === page.content) return;
+
+            setIsSaving(true);
+            try {
+                await api.put(`/pages/${pageId}`, { content: debouncedContent });
+                // Update local page reference so we don't re-save if no further changes
+                setPage((prev: any) => ({ ...prev, content: debouncedContent }));
+            } catch (error) {
+                console.error("Failed to save content", error);
+            } finally {
+                setIsSaving(false);
+            }
+        };
+
+        if (debouncedContent) {
+            save();
+        }
+    }, [debouncedContent, pageId]); // Removed 'page' from dependency to avoid cycles
 
     useEffect(() => {
         const fetchPageDetails = async () => {
@@ -24,6 +60,7 @@ export default function PageDetail() {
                 const { data } = await api.get(`/pages/${pageId}`);
                 setPage(data);
                 setTitle(data.title);
+                setContent(data.content || ''); // Initialize content
             } catch (error) {
                 console.error("Failed to load page", error);
             } finally {
@@ -43,16 +80,6 @@ export default function PageDetail() {
             renamePage(pageId, title); // Updates store and backend
         }
     };
-
-    const saveContent = useCallback(async (content: string) => {
-        if (!pageId) return;
-        // Debounce this ideally, but for now direct save
-        try {
-            await api.put(`/pages/${pageId}`, { content });
-        } catch (error) {
-            console.error("Failed to save content", error);
-        }
-    }, [pageId]);
 
     if (loading) {
         return (
@@ -90,11 +117,13 @@ export default function PageDetail() {
                     </div>
 
                     {/* Editor */}
-                    {/* Keying by pageId ensures we remount editor when switching pages */}
+                    <div className="flex justify-end mb-2 h-4">
+                        {isSaving && <span className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>}
+                    </div>
                     <Editor
                         key={pageId}
                         initialContent={page.content}
-                        onChange={saveContent}
+                        onChange={handleEditorChange}
                     />
                 </div>
             </div>
