@@ -33,13 +33,21 @@ io.on('connection', (socket) => {
 });
 
 // ---------------- Middleware ----------------
-app.use(helmet());
+// ---------------- Middleware ----------------
+app.use(
+    helmet({
+        crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+    })
+);
 app.use(express.json());
 app.use(cookieParser());
 
+const CLIENT_URL = process.env.CLIENT_URL || process.env.client_URL || 'http://localhost:5173';
+
 app.use(
     cors({
-        origin: process.env.CLIENT_URL || 'http://localhost:5173',
+        origin: CLIENT_URL,
         credentials: true,
     })
 );
